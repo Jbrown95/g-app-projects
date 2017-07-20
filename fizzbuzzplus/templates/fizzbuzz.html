@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<input type="button" name="b1" value="shopping_list" onclick="location.href='/'">
+<br>
+<br>
+<form>
+  <h2>Add a number for fizzbuzz</h2>
+
+  <input type="text" name = "n">
+  <button>Add</button>
+<ol>
+  {% for x in range (1, n+1) %}
+    <li>
+    {% if x % 15 == 0 %}
+      FizzBuzz
+    {% elif x % 3 == 0 %}
+      Fizz
+    {% elif x % 5 == 0 %}
+      Buzz
+    {% else %}
+      {{ x }}
+    {% endif %}
+    </li>
+  {% endfor %}
+</ol>
+
+
+{% endblock %}
