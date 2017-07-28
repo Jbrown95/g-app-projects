@@ -2,7 +2,22 @@ import os
 import jinja2
 import webapp2
 import re
+import hmac
 
+SECRET = "thisissupersupersecret"
+
+def hash_str(s):
+    return hmac.new(SECRET, s).hexdigest()
+
+def make_secure_val(s):
+    return "%s|%s" % (s, hash_str(s))
+
+def check_secure_val(h):
+    print('check_secure_val:h: {}'.format(h))
+    if h:
+        val = h.split('|')[0]
+        if h == make_secure_val(val):
+            return val
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
@@ -24,7 +39,6 @@ def valid_email(email):
     return EMAIL_RE.match(email)
 
 
-
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -36,18 +50,20 @@ class Handler(webapp2.RequestHandler):
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
 
-
 class MainPage(Handler):
-
-
     def get(self):
         self.render("username.html",)
     def post(self):
-        
         error_username=''
         v_username = ''
         username = self.request.get("username")
-        if valid_username(username):
+        username_cookie_used = self.request.cookies.get('username')
+        print('username: {}'.format(username))
+        print('username_cookie_used: {}'.format(username_cookie_used))
+
+        if check_secure_val(username_cookie_used) == check_secure_val(make_secure_val(username)):
+            error_username="This username is already taken"
+        elif valid_username(username):
             v_username=username
         else:
             error_username="Invalid username"
@@ -79,14 +95,16 @@ class MainPage(Handler):
         if v_username == username and not v_password == '' and v_verify == password and v_email == email:
             self.redirect('/welcome?username=' + v_username)
         else:
-            self.render("username.html", username = v_username,
-                                        password = v_password,
-                                        verify = v_verify,
-                                        email = v_email,
+            self.render("username.html", username=v_username,
+                                        password=v_password,
+                                        verify =v_verify,
+                                        email =v_email,
                                         error_username = error_username,
                                         error_password = error_password,
                                         error_mismatch = error_mismatch,
                                         error_email = error_email)
+
+
 
 
 
@@ -96,6 +114,8 @@ class WelcomePage(Handler):
         username = self.request.get("username")
         if valid_username(username):
             self.render("welcome.html", username = username)
+            username_cookie = make_secure_val(str(username))
+            self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
         else:
             self.redirect('/')
 
