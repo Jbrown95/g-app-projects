@@ -24,6 +24,11 @@
         <br>
         <button>submit</button>
       </form>
+      <div>
+        {% for user in users %}
+          {{user.user}}
+        {% endfor %}
+      </div>
     </body>
   </head>
 </html>

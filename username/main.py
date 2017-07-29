@@ -3,6 +3,9 @@ import jinja2
 import webapp2
 import re
 import hmac
+import time
+
+from google.appengine.ext import db
 
 SECRET = "thisissupersupersecret"
 
@@ -50,18 +53,37 @@ class Handler(webapp2.RequestHandler):
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
 
+
+def user_key(name = 'default'):
+    return db.Key.from_path('users', name)
+
+class User(db.Model):
+    user = db.StringProperty(required = True)
+    pw = db.StringProperty(required = True)
+
+
 class MainPage(Handler):
     def get(self):
-        self.render("username.html",)
+        users = db.GqlQuery('Select * from User')
+        self.render("username.html", users = users)
     def post(self):
         error_username=''
         v_username = ''
         username = self.request.get("username")
         username_cookie_used = self.request.cookies.get('username')
-        print('username: {}'.format(username))
-        print('username_cookie_used: {}'.format(username_cookie_used))
 
-        if check_secure_val(username_cookie_used) == check_secure_val(make_secure_val(username)):
+        qs = "Select * from User where user = '{}'".format(username)
+        qry = db.GqlQuery(qs)
+        print(qs)
+        try:
+            q = qry[0]
+            q = q.user
+            print('q: {}'.format(q))
+        except:
+            q = None
+            print("nope")
+
+        if username == q:
             error_username="This username is already taken"
         elif valid_username(username):
             v_username=username
@@ -93,8 +115,13 @@ class MainPage(Handler):
             error_email = "Invalid email"
 
         if v_username == username and not v_password == '' and v_verify == password and v_email == email:
+            u = User(user = v_username, pw = v_password)
+            u.put()
             self.redirect('/welcome?username=' + v_username)
+
         else:
+
+
             self.render("username.html", username=v_username,
                                         password=v_password,
                                         verify =v_verify,
@@ -113,7 +140,9 @@ class WelcomePage(Handler):
     def get(self):
         username = self.request.get("username")
         if valid_username(username):
-            self.render("welcome.html", username = username)
+            time.sleep(1)
+            users = db.GqlQuery('Select * from User')
+            self.render("welcome.html", users = users,username = username)
             username_cookie = make_secure_val(str(username))
             self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
         else:
