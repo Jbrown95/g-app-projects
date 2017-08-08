@@ -1,6 +1,7 @@
 import os
 import jinja2
 import webapp2
+import time
 import re
 
 from google.appengine.ext import db
@@ -29,8 +30,13 @@ class Art(db.Model):
 
 class MainPage(Handler):
     def render_front(self, title='', art='', error=''):
+        time.sleep(1)
         arts = db.GqlQuery("SELECT * FROM Art "
                             "ORDER BY created DESC")
+        i = 0
+        for _ in arts:
+            i = i+1
+        print('arts count:{}'.format(i))
 
         self.render("front.html", title=title, art=art,error=error,arts = arts)
 

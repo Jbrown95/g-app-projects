@@ -1,6 +1,27 @@
+<!DOCTYPE html>
+
 <h1> Hello, {{username}} </h1>
+<input type="button" name="logout" value="Logout" onclick="location.href='/logout'">
+<br>
+<input type="button" name="newpost" value="Newpost" onclick="location.href='/newpost'">
+<br>
+<br>
 <div>
-  {% for user in users %}
+  <span>Other Users:  <span>
+    {% for user in users %}
     {{user.user}}
   {% endfor %}
 </div>
+<hr>
+
+{% for post in posts %}
+<div class = "blog">
+  <div class = "blog-title">{{post.title}} by {{post.user}}</div>
+  <pre class = "blog-content">{{post.content}}</pre>
+
+</div>
+{% endfor %}
+
+
+</body>
+</html>

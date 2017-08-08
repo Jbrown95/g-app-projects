@@ -16,7 +16,6 @@ def make_secure_val(s):
     return "%s|%s" % (s, hash_str(s))
 
 def check_secure_val(h):
-    print('check_secure_val:h: {}'.format(h))
     if h:
         val = h.split('|')[0]
         if h == make_secure_val(val):
@@ -41,6 +40,10 @@ EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 def valid_email(email):
     return EMAIL_RE.match(email)
 
+COOKIE_RE = re.compile(r'.+=;\s*Path=/')
+def valid_cookie(cookie):
+    return cookie and COOKIE_RE.match(cookie)
+
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -57,6 +60,13 @@ class Handler(webapp2.RequestHandler):
 def user_key(name = 'default'):
     return db.Key.from_path('users', name)
 
+class BlogPost(db.Model):
+    title = db.StringProperty(required = True)
+    content = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    user = db.TextProperty(required = False)
+
+
 class User(db.Model):
     user = db.StringProperty(required = True)
     pw = db.StringProperty(required = True)
@@ -64,8 +74,12 @@ class User(db.Model):
 
 class MainPage(Handler):
     def get(self):
+        self.redirect('/signup')
+
+class SignUp(Handler):
+    def get(self):
         users = db.GqlQuery('Select * from User')
-        self.render("username.html", users = users)
+        self.render("username.html")
     def post(self):
         error_username=''
         v_username = ''
@@ -74,14 +88,10 @@ class MainPage(Handler):
 
         qs = "Select * from User where user = '{}'".format(username)
         qry = db.GqlQuery(qs)
-        print(qs)
         try:
-            q = qry[0]
-            q = q.user
-            print('q: {}'.format(q))
+            q = qry[0].user
         except:
             q = None
-            print("nope")
 
         if username == q:
             error_username="This username is already taken"
@@ -117,7 +127,11 @@ class MainPage(Handler):
         if v_username == username and not v_password == '' and v_verify == password and v_email == email:
             u = User(user = v_username, pw = v_password)
             u.put()
-            self.redirect('/welcome?username=' + v_username)
+
+            username_cookie = make_secure_val(str(username))
+            self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
+
+            self.redirect('/welcome')
 
         else:
 
@@ -137,21 +151,111 @@ class MainPage(Handler):
 
 
 class WelcomePage(Handler):
+
     def get(self):
-        username = self.request.get("username")
-        if valid_username(username):
+        username = self.request.cookies.get('username')
+        if username:
+            username = username.split('|')[0]
+
+        if username:
             time.sleep(1)
             users = db.GqlQuery('Select * from User')
-            self.render("welcome.html", users = users,username = username)
-            username_cookie = make_secure_val(str(username))
-            self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
+            posts = db.GqlQuery("SELECT * FROM BlogPost "
+                                "ORDER BY created DESC")
+            title=''
+            content=''
+            error=''
+            self.render("welcome.html", users = users,username = username,title=title, content=content,error=error,posts = posts)
         else:
             self.redirect('/')
 
+    #def render_front(self, title='', content='', error='',):
 
 
 
-app = webapp2.WSGIApplication([('/', MainPage),
-                                ('/welcome', WelcomePage)
+
+
+class LoginPage(Handler):
+    def get(self):
+        username = self.request.cookies.get('username').split('|')[0]
+        self.render('login.html', username = username)
+
+
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+
+        qs1 = "Select * from User where user = '{}'".format(username)
+        qry1 = db.GqlQuery(qs1)
+        try:
+            q1 = qry1[0].user
+            q2 = qry1[0].pw
+        except:
+            q1 = None
+            q2 = None
+
+        if username == q1 and password == q2:
+            self.redirect("welcome")
+            username_cookie = make_secure_val(str(username))
+            self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
+        elif username == q1 and not password == q2:
+            self.render('login.html', error_password = 'incorrect password')
+        elif not username == q1 and password == q2:
+            self.render('login.html', error_username = 'no username')
+        else:
+            self.render('login.html', error_username = 'no username')
+
+
+class LogoutPage(Handler):
+    def get(self):
+        none = ''
+        COOKIE_RE
+        self.response.headers.add_header('Set-Cookie', 'username=; Path =/')
+        self.redirect('/login')
+
+class NewPost(Handler):
+    def get(self):
+        self.render('newpost.html')
+    def post(self):
+        title = self.request.get("title")
+        content = self.request.get("content")
+        user = self.request.cookies.get('username').split('|')[0]
+
+        if title and content:
+            a = BlogPost(title = title, content = content, user = user)
+            a.put()
+            time.sleep(1)
+            self.redirect('/{}'.format(str(a.key().id())))
+        else:
+            error = "Double check and make sure you have a title and artwork."
+            self.render("newpost.html", error = error,title = title, content = content)
+
+class PostPage(Handler):
+    def get(self,post_id):
+        key = db.Key.from_path('BlogPost', int(post_id))
+        post = db.get(key)
+        content = post.content
+        title = post.title
+        user = post.user
+        if not post:
+            self.error(404)
+            return
+
+        self.render("permalink.html", title = title, content = content, user = user)
+
+
+
+
+
+
+
+app = webapp2.WSGIApplication([('/signup', SignUp),
+                                ('/welcome', WelcomePage),
+                                ('/', MainPage),
+                                ('/login', LoginPage),
+                                ('/logout', LogoutPage),
+                                ('/newpost', NewPost),
+                                ('/([0-9]+)',PostPage)
                                 ],
                                 debug=True)
