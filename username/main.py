@@ -152,20 +152,22 @@ class SignUp(Handler):
 
 class WelcomePage(Handler):
 
+
     def get(self):
         username = self.request.cookies.get('username')
+
         if username:
             username = username.split('|')[0]
 
         if username:
             time.sleep(1)
             users = db.GqlQuery('Select * from User')
-            posts = db.GqlQuery("SELECT * FROM BlogPost "
-                                "ORDER BY created DESC")
-            title=''
-            content=''
-            error=''
-            self.render("welcome.html", users = users,username = username,title=title, content=content,error=error,posts = posts)
+            # posts = db.GqlQuery("SELECT * FROM BlogPost "
+            #                     "ORDER BY created DESC")
+            posts = BlogPost.all()
+            posts.order('-created')
+
+            self.render("welcome.html", users = users,username = username,posts = posts)
         else:
             self.redirect('/')
 
@@ -225,8 +227,9 @@ class NewPost(Handler):
         if title and content:
             a = BlogPost(title = title, content = content, user = user)
             a.put()
+            newpost_url = ('/newpost/{}'.format(str(a.key().id())))
             time.sleep(1)
-            self.redirect('/{}'.format(str(a.key().id())))
+            self.redirect(newpost_url)
         else:
             error = "Double check and make sure you have a title and artwork."
             self.render("newpost.html", error = error,title = title, content = content)
@@ -256,6 +259,6 @@ app = webapp2.WSGIApplication([('/signup', SignUp),
                                 ('/login', LoginPage),
                                 ('/logout', LogoutPage),
                                 ('/newpost', NewPost),
-                                ('/([0-9]+)',PostPage)
+                                ('/newpost/([0-9]+)',PostPage)
                                 ],
                                 debug=True)
