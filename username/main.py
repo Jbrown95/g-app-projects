@@ -243,11 +243,12 @@ class PostPage(Handler):
         user = post.user
         comments = post.comments
         current_user = self.request.cookies.get('username').split('|')[0]
+        admin = "Joshua"
         if not post:
             self.error(404)
             return
 
-        self.render("permalink.html",post = post, title = title, content = content, user = user, comments = comments, current_user = current_user)
+        self.render("permalink.html",post = post,admin = admin, title = title, content = content, user = user, comments = comments, current_user = current_user)
 
     def post(self,post_id):
         comments = []
@@ -262,10 +263,17 @@ class PostPage(Handler):
 class Delete(Handler):
     def get(self,post_id):
         self.render('delete.html')
-        key = db.Key.from_path('BlogPost', int(post_id))
-        post = db.get(key)
-        post.delete()
-        self.redirect('/welcome')
+        h = self.request.cookies.get('username')
+        if check_secure_val(h):
+            key = db.Key.from_path('BlogPost', int(post_id))
+            post = db.get(key)
+            if post.user == h.split('|')[0] or h.split('|')[0] == "Joshua" :
+                post.delete()
+                self.redirect('/welcome')
+            else:
+                self.redirect('/welcome')
+        else:
+            self.redirect('/welcome')
 
 
 

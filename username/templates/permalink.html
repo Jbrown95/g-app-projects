@@ -6,6 +6,11 @@
   <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
 </form>
 {% endif %}
+{% if current_user == admin %}
+<form method='post'>
+  <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
+</form>
+{% endif %}
 <pre name="content">{{content}}</pre>
 <br>
 <br>
