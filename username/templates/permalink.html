@@ -1,7 +1,18 @@
 <span>{{title}} by {{user}}<span>
 <br>
 <br>
+{% if user == current_user %}
+<form method='post'>
+  <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
+</form>
+{% endif %}
 <pre name="content">{{content}}</pre>
 <br>
 <br>
 <input type="button" name="welcome" value="MainPage" onclick="location.href='/welcome'">
+<br>
+<br>
+<form method = "post">
+<textarea name="comments"></textarea>
+<button>Comment</button>
+</form>

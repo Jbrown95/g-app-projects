@@ -65,6 +65,7 @@ class BlogPost(db.Model):
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     user = db.TextProperty(required = False)
+    comments = db.StringProperty(required = False)
 
 
 class User(db.Model):
@@ -179,8 +180,7 @@ class WelcomePage(Handler):
 
 class LoginPage(Handler):
     def get(self):
-        username = self.request.cookies.get('username').split('|')[0]
-        self.render('login.html', username = username)
+            self.render('login.html')
 
 
 
@@ -202,7 +202,7 @@ class LoginPage(Handler):
             username_cookie = make_secure_val(str(username))
             self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
         elif username == q1 and not password == q2:
-            self.render('login.html', error_password = 'incorrect password')
+            self.render('login.html', error_password = 'incorrect password', username = username)
         elif not username == q1 and password == q2:
             self.render('login.html', error_username = 'no username')
         else:
@@ -212,7 +212,6 @@ class LoginPage(Handler):
 class LogoutPage(Handler):
     def get(self):
         none = ''
-        COOKIE_RE
         self.response.headers.add_header('Set-Cookie', 'username=; Path =/')
         self.redirect('/login')
 
@@ -227,7 +226,7 @@ class NewPost(Handler):
         if title and content:
             a = BlogPost(title = title, content = content, user = user)
             a.put()
-            newpost_url = ('/newpost/{}'.format(str(a.key().id())))
+            newpost_url = ('/permalink/{}'.format(str(a.key().id())))
             time.sleep(1)
             self.redirect(newpost_url)
         else:
@@ -236,18 +235,37 @@ class NewPost(Handler):
 
 class PostPage(Handler):
     def get(self,post_id):
+
         key = db.Key.from_path('BlogPost', int(post_id))
         post = db.get(key)
         content = post.content
         title = post.title
         user = post.user
+        comments = post.comments
+        current_user = self.request.cookies.get('username').split('|')[0]
         if not post:
             self.error(404)
             return
 
-        self.render("permalink.html", title = title, content = content, user = user)
+        self.render("permalink.html",post = post, title = title, content = content, user = user, comments = comments, current_user = current_user)
 
-
+    def post(self,post_id):
+        comments = []
+        comments.append(str(self.request.get('comments')))
+        self.render("permalink.html", comments = comments)
+        key = db.Key.from_path('BlogPost', int(post_id))
+        post = db.get(key)
+        for comment in comments:
+            post.comments = comments
+            post.put()
+        self.redirect('/permalink/{}'.format(str(post_id)))
+class Delete(Handler):
+    def get(self,post_id):
+        self.render('delete.html')
+        key = db.Key.from_path('BlogPost', int(post_id))
+        post = db.get(key)
+        post.delete()
+        self.redirect('/welcome')
 
 
 
@@ -259,6 +277,7 @@ app = webapp2.WSGIApplication([('/signup', SignUp),
                                 ('/login', LoginPage),
                                 ('/logout', LogoutPage),
                                 ('/newpost', NewPost),
-                                ('/newpost/([0-9]+)',PostPage)
+                                ('/delete/([0-9]+)', Delete),
+                                ('/permalink/([0-9]+)',PostPage)
                                 ],
                                 debug=True)
