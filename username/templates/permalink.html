@@ -1,7 +1,9 @@
-<span>{{title}} by {{user}}<span>
+<!DOCTYPE html>
+
+<span>{{title}} by {{post_user}}</span>
 <br>
 <br>
-{% if user == current_user %}
+{% if post_user == current_user %}
 <form method='post'>
   <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
 </form>
@@ -21,3 +23,10 @@
 <textarea name="comments"></textarea>
 <button>Comment</button>
 </form>
+{% for comment in comments %}
+<div class = "blog">
+  <div class = "blog-title">by {{comment.user}}</div>
+  <pre class = "blog-content">{{comment.comment}} </pre>
+
+</div>
+{% endfor %}

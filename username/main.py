@@ -60,12 +60,17 @@ class Handler(webapp2.RequestHandler):
 def user_key(name = 'default'):
     return db.Key.from_path('users', name)
 
+class Comments(db.Model):
+    comment = db.StringProperty(required = True)
+    user = db.TextProperty(required = True)
+    post = db.StringProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+
 class BlogPost(db.Model):
     title = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     user = db.TextProperty(required = False)
-    comments = db.StringProperty(required = False)
 
 
 class User(db.Model):
@@ -163,12 +168,13 @@ class WelcomePage(Handler):
         if username:
             time.sleep(1)
             users = db.GqlQuery('Select * from User')
+            comments = Comments.all()
             # posts = db.GqlQuery("SELECT * FROM BlogPost "
             #                     "ORDER BY created DESC")
             posts = BlogPost.all()
             posts.order('-created')
 
-            self.render("welcome.html", users = users,username = username,posts = posts)
+            self.render("welcome.html", users = users,username = username,posts = posts, comments = comments)
         else:
             self.redirect('/')
 
@@ -235,30 +241,39 @@ class NewPost(Handler):
 
 class PostPage(Handler):
     def get(self,post_id):
+        blogpost_key = db.Key.from_path('BlogPost', int(post_id))
+        blogpost_post = db.get(blogpost_key)
+        content = blogpost_post.content
+        title = blogpost_post.title
+        post_user = blogpost_post.user
+        comments = ''
+        user = ''
+        comments = Comments.all()
+        comments.filter('post =', post_id).order('-created')
 
-        key = db.Key.from_path('BlogPost', int(post_id))
-        post = db.get(key)
-        content = post.content
-        title = post.title
-        user = post.user
-        comments = post.comments
         current_user = self.request.cookies.get('username').split('|')[0]
         admin = "Joshua"
-        if not post:
+        if not blogpost_post:
             self.error(404)
             return
 
-        self.render("permalink.html",post = post,admin = admin, title = title, content = content, user = user, comments = comments, current_user = current_user)
+        self.render("permalink.html",post = blogpost_post,admin = admin,
+                    title = title, content = content, post_user = post_user,
+                    comments = comments, current_user = current_user)
 
     def post(self,post_id):
-        comments = []
-        comments.append(str(self.request.get('comments')))
-        self.render("permalink.html", comments = comments)
-        key = db.Key.from_path('BlogPost', int(post_id))
-        post = db.get(key)
-        for comment in comments:
-            post.comments = comments
-            post.put()
+        blogpost_key = db.Key.from_path('BlogPost', int(post_id))
+        blogpost_post = db.get(blogpost_key)
+        h = self.request.cookies.get('username')
+        if check_secure_val(h):
+            user = h.split('|')[0]
+        else:
+            self.redirect('/permalink/{}'.format(str(post_id)))
+        comment = self.request.get('comments')
+        cmt = Comments(comment = comment, user = user, post = post_id)
+        cmt.put()
+
+        time.sleep(1)
         self.redirect('/permalink/{}'.format(str(post_id)))
 class Delete(Handler):
     def get(self,post_id):
@@ -267,8 +282,13 @@ class Delete(Handler):
         if check_secure_val(h):
             key = db.Key.from_path('BlogPost', int(post_id))
             post = db.get(key)
+            comments = Comments.all()
+            comments.filter('post =', post_id).order('-created')
+
             if post.user == h.split('|')[0] or h.split('|')[0] == "Joshua" :
                 post.delete()
+                for comment in comments:
+                    comment.delete()
                 self.redirect('/welcome')
             else:
                 self.redirect('/welcome')

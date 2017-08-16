@@ -8,13 +8,12 @@
 <br>
 <br>
 <div>
-  <span>Other Users:  <span>
+  <span>Other Users:</span>
     {% for user in users %}
     {{user.user}}
   {% endfor %}
-</div>
 <hr>
-
+</div>
 {% for post in posts %}
 <div class = "blog">
   <div class = "blog-title" onclick="location.href='/permalink/{{post.key().id()}}'" >{{post.title}} by {{post.user}}</div>
