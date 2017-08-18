@@ -3,16 +3,19 @@
 <span>{{title}} by {{post_user}}</span>
 <br>
 <br>
-{% if post_user == current_user %}
+{% if current_user == post_user or current_user == admin %}
 <form method='post'>
   <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
 </form>
 {% endif %}
-{% if current_user == admin %}
+
+{% if current_user == post_user %}
 <form method='post'>
-  <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
+  <input type="button" name="delete" value="edit" onclick="location.href='/edit/{{post.key().id()}}'">
 </form>
 {% endif %}
+
+
 <pre name="content">{{content}}</pre>
 <br>
 <br>

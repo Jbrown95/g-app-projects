@@ -295,6 +295,30 @@ class Delete(Handler):
         else:
             self.redirect('/welcome')
 
+class Edit(Handler):
+    def get(self,post_id):
+        blogpost_key = db.Key.from_path('BlogPost', int(post_id))
+        blogpost_post = db.get(blogpost_key)
+        content = blogpost_post.content
+        title = blogpost_post.title
+        self.render('edit.html',title = title, content = content)
+    def post(self,post_id):
+        blogpost_key = db.Key.from_path('BlogPost', int(post_id))
+        blogpost_post = db.get(blogpost_key)
+        content = self.request.get('content')
+        title = self.request.get('title')
+        h = self.request.cookies.get('username')
+        if check_secure_val(h):
+            user = h.split('|')[0]
+        else:
+            self.redirect('/permalink/{}'.format(str(post_id)))
+        blogpost_post.content = content
+        blogpost_post.title = title
+        blogpost_post.put()
+        time.sleep(1)
+        self.redirect('/permalink/{}'.format(str(post_id)))
+
+
 
 
 
@@ -306,6 +330,8 @@ app = webapp2.WSGIApplication([('/signup', SignUp),
                                 ('/logout', LogoutPage),
                                 ('/newpost', NewPost),
                                 ('/delete/([0-9]+)', Delete),
-                                ('/permalink/([0-9]+)',PostPage)
+                                ('/permalink/([0-9]+)',PostPage),
+                                ('/edit/([0-9]+)',Edit)
+
                                 ],
                                 debug=True)
