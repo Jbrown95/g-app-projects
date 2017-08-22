@@ -29,7 +29,13 @@
 {% for comment in comments %}
 <div class = "blog">
   <div class = "blog-title">by {{comment.user}}</div>
-  <pre class = "blog-content">{{comment.comment}} </pre>
+  {% if current_user == comment.user %}
+  <form method='post'>
+    <input type="button" name="delete" value="Delete" onclick="location.href='/deletecomment/{{comment.key().id()}}'">
+    <input type="button" name="delete" value="edit" onclick="location.href='/editcomment/{{comment.key().id()}}'">
+  </form>
+  {% endif %}
+  <pre class = "blog-content">{{comment.comment}}</pre>
 
 </div>
 {% endfor %}

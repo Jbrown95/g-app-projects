@@ -283,7 +283,7 @@ class Delete(Handler):
             key = db.Key.from_path('BlogPost', int(post_id))
             post = db.get(key)
             comments = Comments.all()
-            comments.filter('post =', post_id).order('-created')
+            comments.filter('post =', post_id)
 
             if post.user == h.split('|')[0] or h.split('|')[0] == "Joshua" :
                 post.delete()
@@ -294,6 +294,17 @@ class Delete(Handler):
                 self.redirect('/welcome')
         else:
             self.redirect('/welcome')
+class DeleteComment(Handler):
+    def get(self,post_id):
+        self.render('deletecomment.html')
+        key = db.Key.from_path('Comments', int(post_id))
+        post = db.get(key)
+        url = post.post
+        h = self.request.cookies.get('username')
+        if check_secure_val(h):
+            post.delete()
+            time.sleep(1)
+            self.redirect('/permalink/{}'.format(url))
 
 class Edit(Handler):
     def get(self,post_id):
@@ -317,6 +328,30 @@ class Edit(Handler):
         blogpost_post.put()
         time.sleep(1)
         self.redirect('/permalink/{}'.format(str(post_id)))
+class EditComment(Handler):
+    def get(self,post_id):
+        comments_key = db.Key.from_path('Comments', int(post_id))
+        comments_post = db.get(comments_key)
+        comment = comments_post.comment
+        user = comments_post.user
+        post = comments_post.post
+        self.render('edit.html',user = user, comment = comment)
+    def post(self,post_id):
+        comments_key = db.Key.from_path('Comments', int(post_id))
+        comments_post = db.get(comments_key)
+        comment = self.request.get('comment')
+        user = self.request.get('user')
+        h = self.request.cookies.get('username')
+        if check_secure_val(h):
+            user = h.split('|')[0]
+        else:
+            self.redirect('/permalink/{}'.format(str(comments_post.post)))
+        comments_post.comment = comment
+        comments_post.user = comments_post.user
+        comments_post.post = comments_post.post
+        comments_post.put()
+        time.sleep(1)
+        self.redirect('/permalink/{}'.format(str(comments_post.post)))
 
 
 
@@ -331,7 +366,11 @@ app = webapp2.WSGIApplication([('/signup', SignUp),
                                 ('/newpost', NewPost),
                                 ('/delete/([0-9]+)', Delete),
                                 ('/permalink/([0-9]+)',PostPage),
-                                ('/edit/([0-9]+)',Edit)
+                                ('/edit/([0-9]+)',Edit),
+                                ('/editcomment/([0-9]+)',EditComment),
+
+                                ('/deletecomment/([0-9]+)', DeleteComment),
+
 
                                 ],
                                 debug=True)

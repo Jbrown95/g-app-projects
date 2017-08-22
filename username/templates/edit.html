@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-
+{% if content %}
 <form method="post">
   <label>
     <div>title</div>
@@ -15,3 +15,17 @@
 <button>Submit</button>
 
 </form>
+{% endif %}
+
+{% if comment %}
+<form method="post">
+<label>
+  <div>Comment</div>
+  <textarea name="comment" >{{comment}}</textarea>
+</label>
+<br>
+<h3 style="color: red;">{{error}}</h3>
+<button>Submit</button>
+
+</form>
+{% endif %}
