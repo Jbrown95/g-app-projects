@@ -296,11 +296,15 @@ class Delete(Handler):
             post = db.get(key)
             comments = Comments.all()
             comments.filter('post =', post_id)
+            likes = Likes.all().filter('post =',post_id)
+
 
             if post.user == h.split('|')[0] or h.split('|')[0] == "Joshua" :
                 post.delete()
                 for comment in comments:
                     comment.delete()
+                for like in likes:
+                    like.delete()
                 self.redirect('/welcome')
             else:
                 self.redirect('/welcome')
