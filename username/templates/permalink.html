@@ -3,6 +3,11 @@
 <span>{{title}} by {{post_user}}</span>
 <br>
 <br>
+{% if current_user != post_user %}
+<form method='post'>
+  <input type="button" name="like" value="like" onclick="location.href='/like/{{post.key().id()}}'">
+</form>
+{% endif %}
 {% if current_user == post_user or current_user == admin %}
 <form method='post'>
   <input type="button" name="delete" value="Delete" onclick="location.href='/delete/{{post.key().id()}}'">
@@ -15,7 +20,7 @@
 </form>
 {% endif %}
 
-
+<span>likes: {{likes}}</span>
 <pre name="content">{{content}}</pre>
 <br>
 <br>

@@ -60,6 +60,10 @@ class Handler(webapp2.RequestHandler):
 def user_key(name = 'default'):
     return db.Key.from_path('users', name)
 
+
+class Likes(db.Model):
+    post = db.StringProperty(required = True)
+    user = db.StringProperty(required = False)
 class Comments(db.Model):
     comment = db.StringProperty(required = True)
     user = db.TextProperty(required = True)
@@ -70,6 +74,7 @@ class BlogPost(db.Model):
     title = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
+    likes = db.IntegerProperty(required = False)
     user = db.TextProperty(required = False)
 
 
@@ -131,7 +136,7 @@ class SignUp(Handler):
             error_email = "Invalid email"
 
         if v_username == username and not v_password == '' and v_verify == password and v_email == email:
-            u = User(user = v_username, pw = v_password)
+            u = User(user = v_username, pw = hash_str(v_password))
             u.put()
 
             username_cookie = make_secure_val(str(username))
@@ -203,7 +208,7 @@ class LoginPage(Handler):
             q1 = None
             q2 = None
 
-        if username == q1 and password == q2:
+        if username == q1 and hash_str(password) == q2:
             self.redirect("welcome")
             username_cookie = make_secure_val(str(username))
             self.response.headers.add_header('Set-Cookie', 'username=%s' % username_cookie)
@@ -232,6 +237,9 @@ class NewPost(Handler):
         if title and content:
             a = BlogPost(title = title, content = content, user = user)
             a.put()
+            like = Likes(post = str(a.key().id()))
+            like.put()
+
             newpost_url = ('/permalink/{}'.format(str(a.key().id())))
             time.sleep(1)
             self.redirect(newpost_url)
@@ -246,6 +254,11 @@ class PostPage(Handler):
         content = blogpost_post.content
         title = blogpost_post.title
         post_user = blogpost_post.user
+        like_qry_str = "Select * from Likes where post = '{}'".format(post_id)
+        like_qry = db.GqlQuery(like_qry_str)
+        likes = -1
+        for i in like_qry:
+            likes += 1
         comments = ''
         user = ''
         comments = Comments.all()
@@ -256,10 +269,9 @@ class PostPage(Handler):
         if not blogpost_post:
             self.error(404)
             return
-
         self.render("permalink.html",post = blogpost_post,admin = admin,
                     title = title, content = content, post_user = post_user,
-                    comments = comments, current_user = current_user)
+                    comments = comments, current_user = current_user, likes = likes)
 
     def post(self,post_id):
         blogpost_key = db.Key.from_path('BlogPost', int(post_id))
@@ -269,11 +281,11 @@ class PostPage(Handler):
             user = h.split('|')[0]
         else:
             self.redirect('/permalink/{}'.format(str(post_id)))
-        comment = self.request.get('comments')
-        cmt = Comments(comment = comment, user = user, post = post_id)
-        cmt.put()
-
-        time.sleep(1)
+        if self.request.get('comments') != '':
+            comment = self.request.get('comments')
+            cmt = Comments(comment = comment, user = user, post = post_id)
+            cmt.put()
+            time.sleep(1)
         self.redirect('/permalink/{}'.format(str(post_id)))
 class Delete(Handler):
     def get(self,post_id):
@@ -328,6 +340,7 @@ class Edit(Handler):
         blogpost_post.put()
         time.sleep(1)
         self.redirect('/permalink/{}'.format(str(post_id)))
+
 class EditComment(Handler):
     def get(self,post_id):
         comments_key = db.Key.from_path('Comments', int(post_id))
@@ -353,7 +366,23 @@ class EditComment(Handler):
         time.sleep(1)
         self.redirect('/permalink/{}'.format(str(comments_post.post)))
 
-
+class Like(Handler):
+    def get(self,post_id):
+        h = self.request.cookies.get('username')
+        user = check_secure_val(h)
+        if check_secure_val(h):
+            like_index = Likes.all().filter('post =',post_id).filter('user =', user)
+            try:
+                q = like_index[0].user
+            except:
+                q = None
+            if q == user:
+                pass
+            else:
+                like = Likes(post = post_id, user = user)
+                like.put()
+        time.sleep(1)
+        self.redirect('/permalink/{}'.format(str(post_id)))
 
 
 
@@ -368,7 +397,7 @@ app = webapp2.WSGIApplication([('/signup', SignUp),
                                 ('/permalink/([0-9]+)',PostPage),
                                 ('/edit/([0-9]+)',Edit),
                                 ('/editcomment/([0-9]+)',EditComment),
-
+                                ('/like/([0-9]+)',Like),
                                 ('/deletecomment/([0-9]+)', DeleteComment),
 
 
